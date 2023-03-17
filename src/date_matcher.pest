@@ -1,0 +1,54 @@
+//
+// date_matcher
+// Author: mig
+//
+
+// Beugungsformen
+BEUG = _{ ( "r" | "n" | "s" ) }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+
+    /// pink
+    days = { ^"day" ~ ^"s"? | ^"tag" ~ "e"? }
+        monday = ${ ^"monday" | ^"Montag" | ^"mon" | ^"mo" }
+        tuesday = ${ ^"tuesday" | ^"Dienstag" | ^"tue" | ^"di" }
+        thursday = ${ ^"thursday" | ^"Mittwoch" | ^"thu" | ^"mi" }
+        wednesday = ${ ^"wednesday" | ^"Donnerstag" | ^"wed" | ^"do" }
+        friday = ${ ^"friday" | ^"Freitag" | ^"fri" | ^"fr" }
+        saturday = ${ ^"saturday" | ^"Samstag" | ^"Sonnabend" | ^"sat" | ^"sa" }
+        sunday = ${ ^"sunday" | ^"Sonntag" | ^"sun" | ^"so" }
+    day_of_week = ${ monday | tuesday | thursday | wednesday | friday | saturday | sunday }
+    weeks = { ^"week" ~ ^"s"? | ^"woche" ~ "n"? }
+    months = { ^"month" ~ ^"s"? | ^"monat" ~ "e"? }
+        january = { ^"january" | ^"Januar" | ^"jan" }
+        february = { ^"february" | ^"Februar" | ^"feb" }
+    month = ${ january | february }
+
+// Date-Parser
+        /// pink
+        yyyy = {  ASCII_DIGIT{4} | ASCII_DIGIT{2} }
+        /// pink
+        mm = { "1" ~ ("0" | "1" | "2") | "0"? ~ ASCII_DIGIT }
+        /// pink
+        dd = { ("1" | "2") ~ ASCII_DIGIT | "3" ~ ("0" | "1") | "0"? ~ ASCII_DIGIT }
+    date_iso = ${ yyyy ~ "-" ~ mm ~ "-" ~ dd }
+    date_en = ${  mm ~ "/" ~ dd ~ "/" ~ yyyy }
+    date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy }
+
+/// purple
+timeunit = ${ days | weeks | months }
+/// red
+amount = ${ ( "+" | "-" ) ~ ASCII_DIGIT+ }
+    yesterday = ${ ^"gestern" | ^"yesterday" }
+    last = ${ ^"last" | ^"previous" | ^"prev" | ^"letzte" ~ BEUG? | ^"vorige" ~ BEUG? | ^"vorherige" ~ BEUG? }
+/// blue
+past = { yesterday | last ~ ( timeunit | day_of_week | month ) }
+    tomorrow = ${ ^"tomorrow" | ^"morgen" }
+    next = ${ ^"next" | ^"coming" | ^"nächste" ~ BEUG | ^"kommende" ~ BEUG }
+/// green
+future = { tomorrow | next ~ timeunit }
+
+offset = { amount ~ timeunit | past | future }
+
+
+date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | offset ) ~ WHITESPACE* }
+
