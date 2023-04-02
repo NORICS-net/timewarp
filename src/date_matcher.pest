@@ -9,19 +9,29 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 
     /// pink
     days = { ^"day" ~ ^"s"? | ^"tag" ~ "e"? }
-        monday = ${ ^"monday" | ^"Montag" | ^"mon" | ^"mo" }
-        tuesday = ${ ^"tuesday" | ^"Dienstag" | ^"tue" | ^"di" }
-        thursday = ${ ^"thursday" | ^"Mittwoch" | ^"thu" | ^"mi" }
-        wednesday = ${ ^"wednesday" | ^"Donnerstag" | ^"wed" | ^"do" }
-        friday = ${ ^"friday" | ^"Freitag" | ^"fri" | ^"fr" }
-        saturday = ${ ^"saturday" | ^"Samstag" | ^"Sonnabend" | ^"sat" | ^"sa" }
-        sunday = ${ ^"sunday" | ^"Sonntag" | ^"sun" | ^"so" }
+        monday = ${ ^"monday" | ^"Montag" | ^"mon" | ^"Mo" }
+        tuesday = ${ ^"tuesday" | ^"Dienstag" | ^"tue" | ^"Di" }
+        wednesday = ${ ^"wednesday" | ^"Mittwoch" | ^"wed" | ^"Mi" }
+        thursday = ${ ^"thursday" | ^"Donnerstag" | ^"thu" | ^"Do" }
+        friday = ${ ^"friday" | ^"Freitag" | ^"fri" | ^"Fr" }
+        saturday = ${ ^"saturday" | ^"Samstag" | ^"Sonnabend" | ^"sat" | ^"Sa" }
+        sunday = ${ ^"sunday" | ^"Sonntag" | ^"sun" | ^"So" }
     day_of_week = ${ monday | tuesday | thursday | wednesday | friday | saturday | sunday }
     weeks = { ^"week" ~ ^"s"? | ^"woche" ~ "n"? }
     months = { ^"month" ~ ^"s"? | ^"monat" ~ "e"? }
         january = { ^"january" | ^"Januar" | ^"jan" }
         february = { ^"february" | ^"Februar" | ^"feb" }
-    month = ${ january | february }
+        march = { ^"march" | ^"März" | ^"Maerz" | ^"mar" | ^"Mär" }
+        april = { ^"april" | ^"apr" }
+        may = { ^"may" | ^"mai" }
+        june = { ^"june" | ^"juni" | ^"jun" }
+        july = { ^"july" | ^"juli" | ^"jul" }
+        august = { ^"august" | ^"aug" }
+        september = { ^"september" | ^"sep" }
+        october = { ^"october" | ^"oct" | ^"oktober" | ^"okt" }
+        november = { ^"november" | ^"nov" }
+        december = { ^"december" | ^"dezember" | ^"dec" | ^"dez" }
+    month = ${ january | february | march | april | may | june | july | august | september | october | november | december }
 
 // Date-Parser
         /// pink
@@ -32,22 +42,25 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
         dd = { ("1" | "2") ~ ASCII_DIGIT | "3" ~ ("0" | "1") | "0"? ~ ASCII_DIGIT }
     date_iso = ${ yyyy ~ "-" ~ mm ~ "-" ~ dd }
     date_en = ${  mm ~ "/" ~ dd ~ "/" ~ yyyy }
-    date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy }
+    date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy? }
 
 /// purple
 timeunit = ${ days | weeks | months }
 /// red
 amount = ${ ( "+" | "-" ) ~ ASCII_DIGIT+ }
     yesterday = ${ ^"gestern" | ^"yesterday" }
+    today = ${ ^"today" | ^"heute" }
     last = ${ ^"last" | ^"previous" | ^"prev" | ^"letzte" ~ BEUG? | ^"vorige" ~ BEUG? | ^"vorherige" ~ BEUG? }
+    forelast = ${ ^"forelast" | ^"vorletzte" ~ BEUG }
 /// blue
-past = { yesterday | last ~ ( timeunit | day_of_week | month ) }
+past = _{ yesterday | today | (forelast | last? ) ~ ( day_of_week | month ) }
     tomorrow = ${ ^"tomorrow" | ^"morgen" }
     next = ${ ^"next" | ^"coming" | ^"nächste" ~ BEUG | ^"kommende" ~ BEUG }
+    afternext = ${ "übernächste" ~ BEUG }
 /// green
-future = { tomorrow | next ~ timeunit }
+future = _{ tomorrow | (afternext | next) ~ ( day_of_week | month ) }
 
-offset = { amount ~ timeunit | past | future }
+offset = _{ amount ~ timeunit | future | past }
 
 
 date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | offset ) ~ WHITESPACE* }

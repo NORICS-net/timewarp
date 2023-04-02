@@ -1,4 +1,5 @@
-use crate::date_matcher::DayOfWeek;
+use crate::day_of_week::DayOfWeek;
+use crate::month_of_year::Month;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::{Display, Error, Formatter};
@@ -12,6 +13,7 @@ pub trait DaySpan {
     fn end(&self) -> Doy;
 }
 
+/// Day Of Year. Helper-class to easily calculate dates.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Doy {
     year: i32,
@@ -19,14 +21,32 @@ pub struct Doy {
 }
 
 impl Doy {
+    pub const SECOND: u128 = 1000;
+    pub const MINUTE: u128 = Self::SECOND * 60;
+    pub const HOUR: u128 = Self::MINUTE * 60;
+    pub const DAY: u128 = Self::HOUR * 24;
+    pub const YEAR: u128 = Self::DAY * 365 + Self::HOUR * 6;
+
+    /// returns the Doy representing today.
     pub fn today() -> Self {
         let millis = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_millis();
-        todo!()
+        Self::from_millis(millis)
     }
 
+    /// converts milliseconds from POSIX time or Epoch time to Doy.
+    pub fn from_millis(millis: u128) -> Self {
+        let offset = millis % Self::YEAR;
+        let year = 1970 + ((millis - offset) / Self::YEAR) as i32;
+        let doyffset = offset % Self::DAY;
+        let doy = 1 + ((offset - doyffset) / Self::DAY) as i32;
+        Self { year, doy }
+    }
+
+    /// creates a new Doy, by the give `dayOfYear` and the `year`.
+    /// 1 = 1. Jan, 32 = 1. Feb, 0 = 31. Dec year - 1  
     pub fn new(doy: i32, year: i32) -> Self {
         let max_doy = 365 + Self::is_leapyear(year) as i32;
         if doy < 1 {
@@ -78,12 +98,27 @@ impl Doy {
         (-1, -1)
     }
 
-    /// 0 = So, 1 = Mo
+    /// returns this doy in iso-format `yyyy-mm-dd`.
+    pub fn as_iso_date(&self) -> String {
+        let (mm, dd) = self.as_date();
+        format!("{:04}-{mm:02}-{dd:02}", self.year)
+    }
+
     #[inline]
     pub fn day_of_week(&self) -> DayOfWeek {
         let y = self.year % 100;
         let y_off = (y + (y / 4) + 6 - self.leapyear() as i32) % 7;
         DayOfWeek::from((y_off + self.doy) % 7)
+    }
+
+    pub fn day_of_month(&self) -> i32 {
+        let (_, d) = self.as_date();
+        d
+    }
+
+    pub fn month(&self) -> Month {
+        let (m, _) = self.as_date();
+        Month::from(m)
     }
 
     pub fn year(&self) -> i32 {
@@ -192,9 +227,21 @@ impl TryFrom<&str> for Doy {
 
 #[cfg(test)]
 mod should {
-    use crate::date_matcher::DayOfWeek::*;
+    use crate::day_of_week::DayOfWeek::*;
     use crate::doy::Doy;
+    use crate::month_of_year::Month;
     use std::convert::TryFrom;
+
+    #[test]
+    fn day_of_month() {
+        let test = Doy::from_ymd(2018, 4, 13);
+        assert_eq!(test.as_iso_date(), "2018-04-13");
+        assert_eq!(test.month(), Month::Apr);
+
+        let test = Doy::from_ymd(2018, 3, 6);
+        assert_eq!(test.as_iso_date(), "2018-03-06");
+        assert_eq!(test.month(), Month::Mar);
+    }
 
     #[test]
     fn create_by_doy_year() {
@@ -254,5 +301,12 @@ mod should {
     fn add_i32() {
         let d = Doy::new(15, 2020) + 2;
         assert_eq!(Doy::new(17, 2020), d);
+    }
+
+    #[test]
+    fn from_millis() {
+        assert_eq!("20230317", Doy::from_millis(1679086777511).to_string());
+        assert_eq!("20230101", Doy::from_millis(1672570315000).to_string());
+        assert_eq!("20181231", Doy::from_millis(1546253515000).to_string());
     }
 }
