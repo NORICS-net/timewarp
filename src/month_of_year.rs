@@ -1,6 +1,7 @@
 use crate::date_matcher::Rule;
 use crate::month_of_year::Month::*;
 
+/// Monthnames - shorted to 3-letter-identifier.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Month {
     Jan = 1,

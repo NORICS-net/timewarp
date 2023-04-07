@@ -6,13 +6,6 @@ use std::fmt::{Display, Error, Formatter};
 use std::ops::{Add, Sub};
 use std::time::SystemTime;
 
-/// A timespan in whole days. `start()` (inclusive) to `end()` (inclusive).
-///
-pub trait DaySpan {
-    fn start(&self) -> Doy;
-    fn end(&self) -> Doy;
-}
-
 /// Day Of Year. Helper-class to easily calculate dates.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Doy {
@@ -64,6 +57,7 @@ impl Doy {
         vec![31, 28 + leap, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     }
 
+    /// Creates a Doy from `year`, `month` and `day`.
     pub fn from_ymd(year: i32, m: i32, d: i32) -> Self {
         assert!(m > 0 && m < 13, "Month has to be in 1..12");
         let doy = Self::day_per_month(year)
@@ -74,12 +68,13 @@ impl Doy {
         Self { doy, year }
     }
 
+    /// Is the given `year` a leap-year?
     #[inline]
     pub fn is_leapyear(year: i32) -> bool {
         year % 4 == 0 && year % 100 != 0
     }
 
-    /// returns the amount of leap-days of the given `year`.
+    /// Is this year a leap-year?.
     pub fn leapyear(&self) -> bool {
         Self::is_leapyear(self.year)
     }
@@ -101,38 +96,32 @@ impl Doy {
     /// returns this doy in iso-format `yyyy-mm-dd`.
     pub fn as_iso_date(&self) -> String {
         let (mm, dd) = self.as_date();
-        format!("{:04}-{mm:02}-{dd:02}", self.year)
+        let year = self.year;
+        format!("{year:04}-{mm:02}-{dd:02}")
     }
 
     #[inline]
     pub fn day_of_week(&self) -> DayOfWeek {
         let y = self.year % 100;
-        let y_off = (y + (y / 4) + 6 - self.leapyear() as i32) % 7;
-        DayOfWeek::from((y_off + self.doy) % 7)
+        let y_off = y + (y / 4) + 6 - self.leapyear() as i32;
+        DayOfWeek::from(y_off + self.doy)
     }
 
+    /// Returns the day of month.
     pub fn day_of_month(&self) -> i32 {
         let (_, d) = self.as_date();
         d
     }
 
+    /// Returns just the `Month`.
     pub fn month(&self) -> Month {
         let (m, _) = self.as_date();
         Month::from(m)
     }
 
+    /// Returns just the `year`.
     pub fn year(&self) -> i32 {
         self.year
-    }
-}
-
-impl DaySpan for Doy {
-    fn start(&self) -> Doy {
-        *self
-    }
-
-    fn end(&self) -> Doy {
-        *self
     }
 }
 
@@ -222,6 +211,34 @@ impl TryFrom<&str> for Doy {
                 i32::from_str(&value[6..8]).expect(m),
             )
         })
+    }
+}
+
+/// A timespan in whole days.
+///
+#[derive(Debug, Eq, PartialEq)]
+pub enum DaySpan {
+    Doy(Doy),
+    Span(Doy, Doy),
+}
+
+impl DaySpan {
+    /// The start-date of this DaySpan (inclusive)
+    pub fn start(&self) -> Doy {
+        use DaySpan::*;
+        match *self {
+            Doy(d) => d,
+            Span(d, _) => d,
+        }
+    }
+
+    /// The end-date of this DaySpan (exclusive)
+    pub fn end(&self) -> Doy {
+        use DaySpan::*;
+        match *self {
+            Doy(d) => d + 1,
+            Span(_, e) => e,
+        }
     }
 }
 

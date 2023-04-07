@@ -1,6 +1,7 @@
 use self::DayOfWeek::*;
 use super::date_matcher::Rule;
 
+/// Days of the week - as known by every child.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum DayOfWeek {
     Sun = 0,

@@ -6,69 +6,69 @@
 //! Should parse
 //! ```rust
 //! use timewarp::Direction::*;
-//! use timewarp::{date_matcher, Doy};
+//! use timewarp::{date_matcher, Doy, DaySpan};
 //!
 //! // Fri 2023-03-17
 //! let today = Doy::from_ymd(2023, 3, 17);
 //! // Date as used in German (d.m.y)
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "22.1.23").unwrap(),
-//!     "2023-01-22"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 1, 22))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "22.1.").unwrap(),
-//!     "2023-01-22"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 1, 22))
 //! );
 //! // Date as common for english-speaker m/d/y
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "3/16/2023").unwrap(),
-//!     "2023-03-16"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
 //! );
 //! // Date written in ISO
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "2023-03-16").unwrap(),
-//!     "2023-03-16"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
 //! );
 //!
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "last monday").unwrap(),
-//!     "2023-03-13"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 13))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "tuesday").unwrap(),
-//!     "2023-03-14"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 14))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "tuesday").unwrap(),
-//!     "2023-03-21"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 21))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "letzten donnerstag").unwrap(),
-//!     "2023-03-16"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "last friday").unwrap(),
-//!     "2023-03-10"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 10))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "nächsten Fr").unwrap(),
-//!     "2023-03-24"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 24))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "coming Thu").unwrap(),
-//!     "2023-03-23"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 23))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "übernächsten Donnerstag").unwrap(),
-//!     "2023-03-30"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 30))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "nächster Mo").unwrap(),
-//!     "2023-03-20"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 20))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "vorletzter mo").unwrap(),
-//!     "2023-03-06"
+//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 6))
 //! );
 //! ```
 
@@ -83,6 +83,6 @@ mod month_of_year;
 
 pub use date_matcher::{date_matcher, Direction};
 pub use day_of_week::DayOfWeek;
-pub use doy::Doy;
+pub use doy::{DaySpan, Doy};
 pub use error::TimeWarpError;
 pub use month_of_year::Month;
