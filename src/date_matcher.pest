@@ -8,7 +8,7 @@ BEUG = _{ ( "r" | "n" | "s" ) }
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 
     /// pink
-    days = { ^"day" ~ ^"s"? | ^"tag" ~ "e"? }
+    days = { ^"day" ~ ^"s"? | ^"tag" ~ ^"e"? }
         monday = ${ ^"monday" | ^"Montag" | ^"mon" | ^"Mo" }
         tuesday = ${ ^"tuesday" | ^"Dienstag" | ^"tue" | ^"Di" }
         wednesday = ${ ^"wednesday" | ^"Mittwoch" | ^"wed" | ^"Mi" }
@@ -17,8 +17,8 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
         saturday = ${ ^"saturday" | ^"Samstag" | ^"Sonnabend" | ^"sat" | ^"Sa" }
         sunday = ${ ^"sunday" | ^"Sonntag" | ^"sun" | ^"So" }
     day_of_week = ${ monday | tuesday | thursday | wednesday | friday | saturday | sunday }
-    weeks = { ^"week" ~ ^"s"? | ^"woche" ~ "n"? }
-    months = { ^"month" ~ ^"s"? | ^"monat" ~ "e"? }
+    weeks = { ^"week" ~ ^"s"? | ^"woche" ~ ^"n"? }
+    months = { ^"month" ~ ^"s"? | ^"monat" ~ ^"e"? }
         january = { ^"january" | ^"Januar" | ^"jan" }
         february = { ^"february" | ^"Februar" | ^"feb" }
         march = { ^"march" | ^"März" | ^"Maerz" | ^"mar" | ^"Mär" }
@@ -32,6 +32,7 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
         november = { ^"november" | ^"nov" }
         december = { ^"december" | ^"dezember" | ^"dec" | ^"dez" }
     month = ${ january | february | march | april | may | june | july | august | september | october | november | december }
+    years = {  ^"year" ~ ^"s"? | ^"jahr" ~ ^"e"? }
 
 // Date-Parser
         /// pink
@@ -45,7 +46,7 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
     date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy? }
 
 /// purple
-timeunit = ${ days | weeks | months }
+timeunit = ${ days | weeks | months | years }
 /// red
 amount = ${ ( "+" | "-" ) ~ ASCII_DIGIT+ }
     yesterday = ${ ^"gestern" | ^"yesterday" }

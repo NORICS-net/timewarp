@@ -24,7 +24,7 @@ fn ok_doy(d: Doy) -> Result<DaySpan, TimeWarpError> {
 }
 
 fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<DaySpan, TimeWarpError> {
-    let mut yy = today.year();
+    let mut yy = today.year;
     let mut mm = 0;
     let mut dd = 0;
     for pair in pairs {
@@ -49,7 +49,7 @@ pub fn date_matcher(
     date: impl Into<String>,
 ) -> Result<DaySpan, TimeWarpError> {
     let text = date.into();
-    let mut count = 0i32;
+    let mut amount = 0i32;
     let mut future = direction == EndTime;
     for pair in DateMatcher::parse(Rule::date_matcher, &text)?
         .next()
@@ -65,21 +65,22 @@ pub fn date_matcher(
             Rule::tomorrow => return ok_doy(today + 1),
             Rule::last => future = false,
             Rule::next => future = true,
+            Rule::amount => amount = i32::from_str(pair.as_str())?,
             Rule::forelast => {
                 future = false;
-                count = 1;
+                amount = 1;
             }
             Rule::afternext => {
-                count = 1;
+                amount = 1;
             }
             Rule::day_of_week => {
                 let wd_today = today.day_of_week();
                 let target_wd =
                     DayOfWeek::from_day_of_week(pair.into_inner().next().unwrap().as_rule());
                 let date = if future {
-                    today + target_wd.days_before(wd_today) + count * 7
+                    today + target_wd.days_before(wd_today) + amount * 7
                 } else {
-                    today - wd_today.days_before(target_wd) - count * 7
+                    today - wd_today.days_before(target_wd) - amount * 7
                 };
                 return ok_doy(date);
             }
@@ -88,7 +89,13 @@ pub fn date_matcher(
                 let date = find_rel_month(today, direction, future, month);
                 return ok_doy(date);
             }
-
+            Rule::timeunit => {
+                return ok_doy(find_timeunit(
+                    pair.into_inner().next().unwrap().as_rule(),
+                    today,
+                    amount,
+                ))
+            }
             _ => println!("date_matcher :: {:?}", pair),
         };
     }
@@ -106,7 +113,31 @@ fn find_rel_month(today: Doy, direction: Direction, future: bool, target_month: 
     } else {
         0
     };
-    Doy::from_ymd(today.year() + add, target_month as i32, 1)
+    Doy::from_ymd(today.year + add, target_month as i32, 1)
+}
+
+fn find_timeunit(rule: Rule, today: Doy, amount: i32) -> Doy {
+    match rule {
+        Rule::days => today + amount,
+        Rule::months => {
+            let mut m = today.month() as i32 + amount;
+            let mut y = today.year;
+            while m > 12 {
+                m -= 12;
+                y += 1;
+            }
+            while m < 1 {
+                m += 12;
+                y -= 1;
+            }
+            Doy::from_ymd(y, m, today.day_of_month())
+        }
+        Rule::years => Doy::new(today.doy, today.year + amount),
+        _ => {
+            println!("find_timeunit :: {:?}", rule);
+            today
+        }
+    }
 }
 
 #[cfg(test)]
@@ -208,6 +239,25 @@ mod should {
         assert_eq!(
             DaySpan::Doy(Doy::from_ymd(2023, 3, 2)),
             date_matcher(first_of_march, EndTime, "morgen").unwrap(),
+        );
+    }
+
+    #[test]
+    fn adding_times() {
+        // Fri 2023-03-17
+        let today = Doy::from_ymd(2023, 3, 17);
+        assert_eq!(
+            DaySpan::Doy(Doy::from_ymd(2023, 3, 22)),
+            date_matcher(today, StartTime, "+5 Tage").unwrap(),
+        );
+        let today = Doy::from_ymd(2023, 3, 17);
+        assert_eq!(
+            DaySpan::Doy(Doy::from_ymd(2022, 3, 17)),
+            date_matcher(today, StartTime, "-1 year").unwrap(),
+        );
+        assert_eq!(
+            DaySpan::Doy(Doy::from_ymd(2022, 2, 17)),
+            date_matcher(today, StartTime, "-13 month").unwrap(),
         );
     }
 

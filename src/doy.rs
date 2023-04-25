@@ -9,8 +9,8 @@ use std::time::SystemTime;
 /// Day Of Year. Helper-class to easily calculate dates.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Doy {
-    year: i32,
-    doy: i32,
+    pub year: i32,
+    pub doy: i32,
 }
 
 impl Doy {
@@ -117,11 +117,6 @@ impl Doy {
     pub fn month(&self) -> Month {
         let (m, _) = self.as_date();
         Month::from(m)
-    }
-
-    /// Returns just the `year`.
-    pub fn year(&self) -> i32 {
-        self.year
     }
 }
 
