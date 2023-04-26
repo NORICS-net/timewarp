@@ -5,6 +5,7 @@
 
 // Beugungsformen
 BEUG = _{ ( "r" | "n" | "s" ) }
+ORD = _{ "." | "st" | "nd" | "rd" | "th" }
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 
     /// pink
@@ -41,9 +42,12 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
         mm = { "1" ~ ("0" | "1" | "2") | "0"? ~ ASCII_DIGIT }
         /// pink
         dd = { ("1" | "2") ~ ASCII_DIGIT | "3" ~ ("0" | "1") | "0"? ~ ASCII_DIGIT }
+        kw = { ("0" | "1" | "2" | "3" | "4" | "5")? ~ ASCII_DIGIT }
     date_iso = ${ yyyy ~ "-" ~ mm ~ "-" ~ dd }
     date_en = ${  mm ~ "/" ~ dd ~ "/" ~ yyyy }
     date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy? }
+    date_kw = { ( (^"kw" | ^"cw" | ^"week" | ^"woche" ) ~ yyyy ~ ("-" | "/") ~ kw | yyyy ~ "-"? ~ ^"W" ~ kw) }
+    date_lang = { ( month ~ dd ~ ORD? ~ yyyy | dd ~ ORD? ~ month ~ yyyy )  }
 
 /// purple
 timeunit = ${ days | weeks | months | years }
@@ -64,5 +68,5 @@ future = _{ tomorrow | (afternext | next) ~ ( day_of_week | month ) }
 offset = _{ amount ~ timeunit | future | past }
 
 
-date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | offset ) ~ WHITESPACE* }
+date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | date_lang | date_kw | offset ) ~ WHITESPACE* }
 

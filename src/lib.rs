@@ -6,69 +6,69 @@
 //! Should parse
 //! ```rust
 //! use timewarp::Direction::*;
-//! use timewarp::{date_matcher, Doy, DaySpan};
+//! use timewarp::{date_matcher, Doy, Tempus};
 //!
 //! // Fri 2023-03-17
 //! let today = Doy::from_ymd(2023, 3, 17);
 //! // Date as used in German (d.m.y)
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "22.1.23").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 1, 22))
+//!     Tempus::Moment(Doy::from_ymd(2023, 1, 22))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "22.1.").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 1, 22))
+//!     Tempus::Moment(Doy::from_ymd(2023, 1, 22))
 //! );
 //! // Date as common for english-speaker m/d/y
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "3/16/2023").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 16))
 //! );
 //! // Date written in ISO
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "2023-03-16").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 16))
 //! );
 //!
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "last monday").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 13))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 13))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "tuesday").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 14))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 14))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "tuesday").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 21))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 21))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, StartTime, "letzten donnerstag").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 16))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 16))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "last friday").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 10))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 10))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "nächsten Fr").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 24))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 24))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "coming Thu").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 23))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 23))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "übernächsten Donnerstag").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 30))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 30))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "nächster Mo").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 20))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 20))
 //! );
 //! assert_eq!(
 //!     date_matcher(today, EndTime, "vorletzter mo").unwrap(),
-//!     DaySpan::Doy(Doy::from_ymd(2023, 3, 6))
+//!     Tempus::Moment(Doy::from_ymd(2023, 3, 6))
 //! );
 //! ```
 
@@ -83,6 +83,6 @@ mod month_of_year;
 
 pub use date_matcher::{date_matcher, Direction};
 pub use day_of_week::DayOfWeek;
-pub use doy::{DaySpan, Doy};
+pub use doy::{Doy, Tempus};
 pub use error::TimeWarpError;
 pub use month_of_year::Month;

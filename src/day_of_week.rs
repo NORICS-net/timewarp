@@ -57,12 +57,21 @@ impl From<i32> for DayOfWeek {
 
 #[cfg(test)]
 mod should {
+    use super::DayOfWeek;
+    use super::DayOfWeek::*;
 
     #[test]
     fn calc_days_before() {
-        use super::DayOfWeek::*;
         assert_eq!(1, Sat.days_before(Fri));
         assert_eq!(6, Fri.days_before(Sat));
         assert_eq!(7, Sat.days_before(Sat));
+    }
+
+    #[test]
+    fn from_into() {
+        assert_eq!(Sat, DayOfWeek::from(Sat as i32));
+        assert_eq!(Sun, DayOfWeek::from(0));
+        assert_eq!(Sun, DayOfWeek::from(7));
+        assert_eq!(Thu, DayOfWeek::from(4));
     }
 }

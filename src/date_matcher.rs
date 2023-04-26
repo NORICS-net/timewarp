@@ -1,7 +1,7 @@
 use super::TimeWarpError;
 use crate::date_matcher::Direction::EndTime;
 use crate::day_of_week::DayOfWeek;
-use crate::doy::{DaySpan, Doy};
+use crate::doy::{Doy, Tempus};
 use crate::error::parse_error;
 use crate::month_of_year::Month;
 use pest::iterators::Pairs;
@@ -19,18 +19,53 @@ pub enum Direction {
     StartTime,
 }
 
-fn ok_doy(d: Doy) -> Result<DaySpan, TimeWarpError> {
-    Ok(DaySpan::Doy(d))
+fn ok_doy(d: Doy) -> Result<Tempus, TimeWarpError> {
+    Ok(Tempus::Moment(d))
 }
 
-fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<DaySpan, TimeWarpError> {
+fn correct_yyyy(str: &str, relative: i32) -> Result<i32, TimeWarpError> {
+    let yy = i32::from_str(str)?;
+    if yy > 100 {
+        return Ok(yy);
+    }
+    let offset = relative % 100;
+    let base = relative - offset;
+    if yy > offset + 50 {
+        Ok(base - 100 + yy)
+    } else if yy < offset - 50 {
+        Ok(base + 100 + yy)
+    } else {
+        Ok(base + yy)
+    }
+}
+
+fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
     let mut yy = today.year;
     let mut mm = 0;
     let mut dd = 0;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::yyyy => yy = i32::from_str(pair.as_str())?,
+            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
             Rule::mm => mm = i32::from_str(pair.as_str())?,
+            Rule::dd => dd = i32::from_str(pair.as_str())?,
+            _ => {
+                println!("Found more than expected: {:?}", pair)
+            }
+        };
+    }
+    ok_doy(Doy::from_ymd(yy, mm, dd))
+}
+
+fn date_lang(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
+    let mut yy = today.year;
+    let mut mm = 0;
+    let mut dd = 0;
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
+            Rule::month => {
+                mm = Month::from_month(pair.into_inner().next().unwrap().as_rule()) as i32
+            }
             Rule::dd => dd = i32::from_str(pair.as_str())?,
             _ => {
                 println!("Found more than expected: {:?}", pair)
@@ -40,14 +75,31 @@ fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<DaySpan, TimeWarpError
     if yy < 100 {
         yy += 2000;
     }
+    println!("{yy} {mm} {dd}");
     ok_doy(Doy::from_ymd(yy, mm, dd))
+}
+
+fn date_week(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
+    let mut yy = today.year;
+    let mut kw = 0;
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
+            Rule::kw => kw = i32::from_str(pair.as_str())?,
+            _ => {
+                println!("Found more than expected: {:?}", pair)
+            }
+        }
+    }
+    let start = Doy::from_week(yy, kw);
+    Ok(Tempus::Interval(start, start + 7))
 }
 
 pub fn date_matcher(
     today: Doy,
     direction: Direction,
     date: impl Into<String>,
-) -> Result<DaySpan, TimeWarpError> {
+) -> Result<Tempus, TimeWarpError> {
     let text = date.into();
     let mut amount = 0i32;
     let mut future = direction == EndTime;
@@ -60,6 +112,8 @@ pub fn date_matcher(
             Rule::date_iso | Rule::date_en | Rule::date_de => {
                 return yy_mm_dd(pair.into_inner(), today)
             }
+            Rule::date_lang => return date_lang(pair.into_inner(), today),
+            Rule::date_kw => return date_week(pair.into_inner(), today),
             Rule::today => return ok_doy(today),
             Rule::yesterday => return ok_doy(today - 1),
             Rule::tomorrow => return ok_doy(today + 1),
@@ -143,10 +197,19 @@ fn find_timeunit(rule: Rule, today: Doy, amount: i32) -> Doy {
 #[cfg(test)]
 mod should {
     use super::date_matcher;
-    use crate::date_matcher::find_rel_month;
     use crate::date_matcher::Direction::{EndTime, StartTime};
-    use crate::doy::{DaySpan, Doy};
+    use crate::date_matcher::{correct_yyyy, find_rel_month};
+    use crate::doy::{Doy, Tempus};
     use crate::month_of_year::Month::{Aug, Jan};
+
+    #[test]
+    fn adjust_yyyy() {
+        assert_eq!(2023, correct_yyyy("2023", 2023).unwrap());
+        assert_eq!(2023, correct_yyyy("23", 2023).unwrap());
+        assert_eq!(2023, correct_yyyy("23", 1995).unwrap());
+        assert_eq!(1989, correct_yyyy("89", 2023).unwrap());
+        assert_eq!(2089, correct_yyyy("89", 2043).unwrap());
+    }
 
     #[test]
     fn find_relative_months() {
@@ -158,11 +221,11 @@ mod should {
         );
 
         assert_eq!(
-            DaySpan::Doy(Doy::new(1, 2023)),
+            Tempus::Moment(Doy::new(1, 2023)),
             date_matcher(today, StartTime, "last january").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::new(1, 2024)),
+            Tempus::Moment(Doy::new(1, 2024)),
             date_matcher(today, StartTime, "next january").unwrap(),
         );
         assert_eq!(
@@ -174,7 +237,7 @@ mod should {
             find_rel_month(today, StartTime, false, Aug)
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2024, 2, 1)),
+            Tempus::Moment(Doy::from_ymd(2024, 2, 1)),
             date_matcher(today, EndTime, "next january").unwrap(),
         );
     }
@@ -184,43 +247,43 @@ mod should {
         // Fri 2023-03-17
         let today = Doy::from_ymd(2023, 3, 17);
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 13)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 13)),
             date_matcher(today, EndTime, "last monday").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 14)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 14)),
             date_matcher(today, StartTime, "tuesday").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 21)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 21)),
             date_matcher(today, EndTime, "tuesday").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 16)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
             date_matcher(today, StartTime, "letzten donnerstag").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 10)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 10)),
             date_matcher(today, EndTime, "last friday").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 24)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 24)),
             date_matcher(today, EndTime, "nächsten Fr").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 23)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 23)),
             date_matcher(today, EndTime, "coming Thu").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 30)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 30)),
             date_matcher(today, EndTime, "übernächsten Donnerstag").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 20)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 20)),
             date_matcher(today, EndTime, "nächster Mo").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 6)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 6)),
             date_matcher(today, EndTime, "vorletzter mo").unwrap(),
         );
     }
@@ -229,15 +292,15 @@ mod should {
     fn find_yesterday() {
         let first_of_march = Doy::from_ymd(2023, 3, 1);
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 1)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 1)),
             date_matcher(first_of_march, EndTime, "heute").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 2, 28)),
+            Tempus::Moment(Doy::from_ymd(2023, 2, 28)),
             date_matcher(first_of_march, EndTime, "yesterday").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 2)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 2)),
             date_matcher(first_of_march, EndTime, "morgen").unwrap(),
         );
     }
@@ -247,16 +310,16 @@ mod should {
         // Fri 2023-03-17
         let today = Doy::from_ymd(2023, 3, 17);
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 22)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 22)),
             date_matcher(today, StartTime, "+5 Tage").unwrap(),
         );
         let today = Doy::from_ymd(2023, 3, 17);
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2022, 3, 17)),
+            Tempus::Moment(Doy::from_ymd(2022, 3, 17)),
             date_matcher(today, StartTime, "-1 year").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2022, 2, 17)),
+            Tempus::Moment(Doy::from_ymd(2022, 2, 17)),
             date_matcher(today, StartTime, "-13 month").unwrap(),
         );
     }
@@ -266,28 +329,60 @@ mod should {
         // Fri 2023-03-17
         let today = Doy::from_ymd(2023, 3, 17);
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 1, 22)),
+            Tempus::Moment(Doy::from_ymd(2023, 1, 22)),
             date_matcher(today, StartTime, "22.01.2023").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 1, 22)),
+            Tempus::Moment(Doy::from_ymd(2023, 1, 22)),
             date_matcher(today, StartTime, "22.1.23").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 1, 22)),
+            Tempus::Moment(Doy::from_ymd(2023, 1, 22)),
             date_matcher(today, StartTime, "22.1.").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 16)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
             date_matcher(today, StartTime, "3/16/2023").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 16)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
             date_matcher(today, StartTime, "2023-03-16").unwrap(),
         );
         assert_eq!(
-            DaySpan::Doy(Doy::from_ymd(2023, 3, 16)),
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
             date_matcher(today, StartTime, "    23-03-16  ").unwrap(),
+        );
+
+        assert_eq!(
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
+            date_matcher(today, StartTime, "16. Mär 2023").unwrap(),
+        );
+        assert_eq!(
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
+            date_matcher(today, StartTime, "16. März 2023").unwrap(),
+        );
+        assert_eq!(
+            Tempus::Moment(Doy::from_ymd(2023, 3, 16)),
+            date_matcher(today, StartTime, "March 16th 2023").unwrap(),
+        );
+    }
+
+    #[test]
+    fn parse_week() {
+        let today = Doy::from_ymd(2023, 3, 17);
+
+        assert_eq!(
+            Tempus::Interval(Doy::from_ymd(2023, 3, 27), Doy::from_ymd(2023, 4, 3)),
+            date_matcher(today, StartTime, "2023-W13").unwrap(),
+        );
+        assert_eq!(
+            Tempus::Interval(Doy::from_ymd(2020, 12, 21), Doy::from_ymd(2020, 12, 28)),
+            date_matcher(today, StartTime, "Woche 2020-52").unwrap(),
+        );
+
+        assert_eq!(
+            Tempus::Interval(Doy::from_ymd(2020, 12, 21), Doy::from_ymd(2020, 12, 28)),
+            date_matcher(today, StartTime, "KW 20/52").unwrap(),
         );
     }
 }

@@ -1,5 +1,6 @@
 use crate::day_of_week::DayOfWeek;
 use crate::month_of_year::Month;
+use crate::DayOfWeek::{Sun, Thu};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt::{Display, Error, Formatter};
@@ -68,6 +69,17 @@ impl Doy {
         Self { doy, year }
     }
 
+    /// Creates a Doy for the Monday of the given week (iso 8601)
+    pub fn from_week(year: i32, week: i32) -> Self {
+        assert!(week > 0 && week < 54, "Week has to be in 1..53");
+        let weekday = Self::new(4, year).day_of_week();
+        let doy = match weekday {
+            Sun => Thu as i32 - 6,
+            _ => Thu as i32 + 1 - (weekday as i32),
+        } + (week - 1) * 7;
+        Self::new(doy, year)
+    }
+
     /// Is the given `year` a leap-year?
     #[inline]
     pub fn is_leapyear(year: i32) -> bool {
@@ -107,16 +119,28 @@ impl Doy {
         DayOfWeek::from(y_off + self.doy)
     }
 
+    /// The ISO 8601 Weeks start with Monday and end on Sunday. The first week of the year always
+    /// contains January 4th. And the first Thursday is always in the first week of the year.
+    ///
+    /// returns the week in iso-8601-format: `yyyy`-W`ww`
+    pub fn iso8601week(&self) -> String {
+        let dof = self.day_of_week();
+        let thu = match dof {
+            Sun => *self + Thu as i32 - 7,
+            _ => *self + Thu as i32 - (dof as i32),
+        };
+        let kw = (thu.doy + 6) / 7;
+        format!("{}-W{kw:02}", thu.year)
+    }
+
     /// Returns the day of month.
     pub fn day_of_month(&self) -> i32 {
-        let (_, d) = self.as_date();
-        d
+        self.as_date().1
     }
 
     /// Returns just the `Month`.
     pub fn month(&self) -> Month {
-        let (m, _) = self.as_date();
-        Month::from(m)
+        Month::from(self.as_date().0)
     }
 }
 
@@ -212,27 +236,27 @@ impl TryFrom<&str> for Doy {
 /// A timespan in whole days.
 ///
 #[derive(Debug, Eq, PartialEq)]
-pub enum DaySpan {
-    Doy(Doy),
-    Span(Doy, Doy),
+pub enum Tempus {
+    Moment(Doy),
+    Interval(Doy, Doy),
 }
 
-impl DaySpan {
+impl Tempus {
     /// The start-date of this DaySpan (inclusive)
     pub fn start(&self) -> Doy {
-        use DaySpan::*;
+        use Tempus::*;
         match *self {
-            Doy(d) => d,
-            Span(d, _) => d,
+            Moment(d) => d,
+            Interval(d, _) => d,
         }
     }
 
     /// The end-date of this DaySpan (exclusive)
     pub fn end(&self) -> Doy {
-        use DaySpan::*;
+        use Tempus::*;
         match *self {
-            Doy(d) => d + 1,
-            Span(_, e) => e,
+            Moment(d) => d + 1,
+            Interval(_, e) => e,
         }
     }
 }
@@ -243,6 +267,37 @@ mod should {
     use crate::doy::Doy;
     use crate::month_of_year::Month;
     use std::convert::TryFrom;
+
+    #[test]
+    fn from_week_of_year() {
+        assert_eq!("2018-01-01", Doy::from_week(2018, 1).as_iso_date());
+        assert_eq!("2018-12-31", Doy::from_week(2019, 1).as_iso_date());
+        assert_eq!("2019-12-30", Doy::from_week(2020, 1).as_iso_date());
+        assert_eq!("2021-01-04", Doy::from_week(2021, 1).as_iso_date());
+        assert_eq!("2022-01-03", Doy::from_week(2022, 1).as_iso_date());
+    }
+
+    #[test]
+    fn into_week_of_year() {
+        // 1. Rule: 4th of January is always in W01
+        assert_eq!("2018-W01", Doy::from_ymd(2018, 1, 4).iso8601week());
+        assert_eq!("2019-W01", Doy::from_ymd(2019, 1, 4).iso8601week());
+        assert_eq!("2020-W01", Doy::from_ymd(2020, 1, 4).iso8601week());
+        assert_eq!("2021-W01", Doy::from_ymd(2021, 1, 4).iso8601week());
+        assert_eq!("2022-W01", Doy::from_ymd(2022, 1, 4).iso8601week());
+        assert_eq!("2023-W01", Doy::from_ymd(2023, 1, 4).iso8601week());
+        assert_eq!("2026-W01", Doy::from_ymd(2026, 1, 4).iso8601week());
+
+        assert_eq!("2018-W01", Doy::from_ymd(2018, 1, 1).iso8601week());
+        assert_eq!("2019-W01", Doy::from_ymd(2019, 1, 1).iso8601week());
+        assert_eq!("2020-W53", Doy::from_ymd(2021, 1, 1).iso8601week());
+        assert_eq!("2021-W52", Doy::from_ymd(2022, 1, 1).iso8601week());
+
+        assert_eq!("2018-W26", Doy::from_ymd(2018, 7, 1).iso8601week());
+        assert_eq!("2019-W27", Doy::from_ymd(2019, 7, 1).iso8601week());
+        assert_eq!("2020-W27", Doy::from_ymd(2020, 7, 1).iso8601week());
+        assert_eq!("2021-W26", Doy::from_ymd(2021, 7, 1).iso8601week());
+    }
 
     #[test]
     fn day_of_month() {
@@ -281,6 +336,8 @@ mod should {
 
     #[test]
     fn calc_day_of_week() {
+        assert_eq!(Wed, Doy::new(31, 2018).day_of_week());
+        assert_eq!(Thu, Doy::new(31, 2019).day_of_week());
         assert_eq!(Fri, Doy::new(31, 2020).day_of_week());
         // Wochentag vom 1. Weihnachtstag 25.12.
         assert_eq!(Tue, Doy::new(359, 2018).day_of_week());
