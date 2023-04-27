@@ -66,7 +66,7 @@ impl Doy {
             .take(m as usize - 1)
             .sum::<i32>()
             + d;
-        Self { doy, year }
+        Self::new(doy, year)
     }
 
     /// Creates a Doy for the Monday of the given week (iso 8601)
@@ -107,9 +107,7 @@ impl Doy {
 
     /// returns this doy in iso-format `yyyy-mm-dd`.
     pub fn as_iso_date(&self) -> String {
-        let (mm, dd) = self.as_date();
-        let year = self.year;
-        format!("{year:04}-{mm:02}-{dd:02}")
+        format!("{self:#}")
     }
 
     #[inline]
@@ -154,7 +152,11 @@ impl Display for Doy {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::result::Result<(), Error> {
         let (month, day) = self.as_date();
         let year = self.year;
-        write!(f, "{year:04}{month:02}{day:02}")
+        if f.alternate() {
+            write!(f, "{year:04}-{month:02}-{day:02}")
+        } else {
+            write!(f, "{year:04}{month:02}{day:02}")
+        }
     }
 }
 
