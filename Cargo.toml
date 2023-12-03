@@ -1,17 +1,17 @@
 [package]
 name = "timewarp"
 description = "NLP library for parsing English and German natural language into dates and times."
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 repository = "https://github.com/NORICS-net/timewarp"
 authors = ["Micha Glave <coding@migmedia.de>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
-categories = ["date-and-time", "NLP"]
-keywords = ["time", "human", "human-friendly", "parser"]
+categories = ["date-and-time", "text-processing", "parser-implementations"]
+keywords = ["time", "human", "human-friendly", "parser", "nlp"]
 
 [lib]
 
 [dependencies]
-pest = "2.6.0"
-pest_derive = "2.6.0"
+pest = "2.7.5"
+pest_derive = "2.7.5"

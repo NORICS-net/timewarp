@@ -47,9 +47,7 @@ fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError>
             Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
             Rule::mm => mm = i32::from_str(pair.as_str())?,
             Rule::dd => dd = i32::from_str(pair.as_str())?,
-            _ => {
-                println!("Found more than expected: {:?}", pair)
-            }
+            _ => println!("Found more than expected: {pair:?}"),
         };
     }
     ok_doy(Doy::from_ymd(yy, mm, dd))
@@ -63,18 +61,15 @@ fn date_lang(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError
         match pair.as_rule() {
             Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
             Rule::month => {
-                mm = Month::from_month(pair.into_inner().next().unwrap().as_rule()) as i32
+                mm = Month::from_month(pair.into_inner().next().unwrap().as_rule()) as i32;
             }
             Rule::dd => dd = i32::from_str(pair.as_str())?,
-            _ => {
-                println!("Found more than expected: {:?}", pair)
-            }
+            _ => println!("Found more than expected: {pair:?}"),
         };
     }
     if yy < 100 {
         yy += 2000;
     }
-    println!("{yy} {mm} {dd}");
     ok_doy(Doy::from_ymd(yy, mm, dd))
 }
 
@@ -85,9 +80,7 @@ fn date_week(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError
         match pair.as_rule() {
             Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
             Rule::kw => kw = i32::from_str(pair.as_str())?,
-            _ => {
-                println!("Found more than expected: {:?}", pair)
-            }
+            _ => println!("Found more than expected: {pair:?}"),
         }
     }
     let start = Doy::from_week(yy, kw);
@@ -149,7 +142,7 @@ pub fn date_matcher(
                     amount,
                 ))
             }
-            _ => println!("date_matcher :: {:?}", pair),
+            _ => println!("date_matcher :: {pair:?}"),
         };
     }
     parse_error("Nothing found")
@@ -157,14 +150,12 @@ pub fn date_matcher(
 
 fn find_rel_month(today: Doy, direction: Direction, future: bool, target_month: Month) -> Doy {
     // if direction is EndTime add a Month
-    let target_month = target_month.inc((direction == Direction::To) as i32);
+    let target_month = target_month.inc(i32::from(direction == Direction::To));
     let today_m = today.month();
     let add = if target_month > today_m && !future {
         -1
-    } else if target_month < today_m && future {
-        1
     } else {
-        0
+        i32::from(target_month < today_m && future)
     };
     Doy::from_ymd(today.year + add, target_month as i32, 1)
 }
@@ -187,7 +178,7 @@ fn find_timeunit(rule: Rule, today: Doy, amount: i32) -> Doy {
         }
         Rule::years => Doy::new(today.doy, today.year + amount),
         _ => {
-            println!("find_timeunit :: {:?}", rule);
+            println!("find_timeunit :: {rule:?}");
             today
         }
     }

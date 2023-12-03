@@ -1,7 +1,7 @@
-use self::DayOfWeek::*;
+use self::DayOfWeek::{Fri, Mon, Sat, Sun, Thu, Tue, Unknown, Wed};
 use super::date_matcher::Rule;
 
-/// Days of the week - as known by every child.
+/// Days of the week - as known by every english speaking child.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum DayOfWeek {
     Sun = 0,
@@ -29,7 +29,7 @@ impl DayOfWeek {
         }
     }
 
-    /// calculates the amount of days this DayOfWeek is before the `other` one.
+    /// Calculates the amount of days this `DayOfWeek` is before the `other` one.
     pub fn days_before(&self, other: Self) -> i32 {
         let today = if *self as i32 > other as i32 {
             *self as i32

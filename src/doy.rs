@@ -1,13 +1,17 @@
 use crate::day_of_week::DayOfWeek;
+use crate::error::parse_error;
 use crate::month_of_year::Month;
 use crate::DayOfWeek::{Sun, Thu};
+use crate::TimeWarpError;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
-use std::fmt::{Display, Error, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use std::num::ParseIntError;
 use std::ops::{Add, Sub};
 use std::time::SystemTime;
 
 /// Day Of Year. Helper-class to easily calculate dates.
+#[must_use]
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Doy {
     pub year: i32,
@@ -34,21 +38,21 @@ impl Doy {
     pub fn from_millis(millis: u128) -> Self {
         let offset = millis % Self::YEAR;
         let year = 1970 + ((millis - offset) / Self::YEAR) as i32;
-        let doyffset = offset % Self::DAY;
-        let doy = 1 + ((offset - doyffset) / Self::DAY) as i32;
+        let doy_offset = offset % Self::DAY;
+        let doy = 1 + ((offset - doy_offset) / Self::DAY) as i32;
         Self { year, doy }
     }
 
-    /// creates a new Doy, by the give `dayOfYear` and the `year`.
-    /// 1 = 1. Jan, 32 = 1. Feb, 0 = 31. Dec year - 1  
+    /// Creates a new Doy, by the give `dayOfYear` and the `year`.
+    /// 1 = 1. Jan, 32 = 1. Feb, 0 = 31. Dec (year - 1)  
     pub fn new(doy: i32, year: i32) -> Self {
-        let max_doy = 365 + Self::is_leapyear(year) as i32;
+        let max_doy = 365 + i32::from(Self::is_leapyear(year));
         if doy < 1 {
-            Self::new(365 + Self::is_leapyear(year - 1) as i32 + doy, year - 1)
+            Self::new(365 + i32::from(Self::is_leapyear(year - 1)) + doy, year - 1)
         } else if doy > max_doy {
             Self::new(doy - max_doy, year + 1)
         } else {
-            Self { doy, year }
+            Self { year, doy }
         }
     }
 
@@ -59,25 +63,32 @@ impl Doy {
     }
 
     /// Creates a Doy from `year`, `month` and `day`.
-    pub fn from_ymd(year: i32, m: i32, d: i32) -> Self {
-        assert!(m > 0 && m < 13, "Month has to be in 1..12");
-        let doy = Self::day_per_month(year)
+    ///
+    /// # Panics
+    /// panics if `month` is not in 1..12
+    pub fn from_ymd(year: i32, month: i32, day: i32) -> Self {
+        assert!(month > 0 && month < 13, "Month has to be in 1..12");
+        let day_of_year = Self::day_per_month(year)
             .iter()
-            .take(m as usize - 1)
+            .take(month as usize - 1)
             .sum::<i32>()
-            + d;
-        Self::new(doy, year)
+            + day;
+        Self::new(day_of_year, year)
     }
 
     /// Creates a Doy for the Monday of the given week (iso 8601)
+    ///
+    /// # Panics
+    /// panics if `week` is not in 1..53
     pub fn from_week(year: i32, week: i32) -> Self {
         assert!(week > 0 && week < 54, "Week has to be in 1..53");
+        // weekday of 4th, Jan.
         let weekday = Self::new(4, year).day_of_week();
-        let doy = match weekday {
+        let day_of_year = match weekday {
             Sun => Thu as i32 - 6,
             _ => Thu as i32 + 1 - (weekday as i32),
         } + (week - 1) * 7;
-        Self::new(doy, year)
+        Self::new(day_of_year, year)
     }
 
     /// Is the given `year` a leap-year?
@@ -86,7 +97,7 @@ impl Doy {
         year % 4 == 0 && year % 100 != 0
     }
 
-    /// Is this year a leap-year?.
+    /// Is this year a leap-year?
     pub fn leapyear(&self) -> bool {
         Self::is_leapyear(self.year)
     }
@@ -110,6 +121,7 @@ impl Doy {
         format!("{self:#}")
     }
 
+    /// Day of Week
     #[inline]
     pub fn day_of_week(&self) -> DayOfWeek {
         let y = self.year % 100;
@@ -148,8 +160,14 @@ impl From<Doy> for String {
     }
 }
 
+impl From<u128> for Doy {
+    fn from(value: u128) -> Self {
+        Doy::from_millis(value)
+    }
+}
+
 impl Display for Doy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::result::Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let (month, day) = self.as_date();
         let year = self.year;
         if f.alternate() {
@@ -184,7 +202,7 @@ macro_rules! gen_calcs {
 
 gen_calcs!(i8, i16, i32, i64, u8, u16, u32, u64);
 
-impl std::cmp::PartialOrd for Doy {
+impl PartialOrd for Doy {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let p = if self.lt(other) {
             Ordering::Less
@@ -214,24 +232,37 @@ impl std::cmp::PartialOrd for Doy {
 }
 
 impl TryFrom<&str> for Doy {
-    type Error = std::num::ParseIntError;
+    type Error = TimeWarpError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use std::str::FromStr;
-        let m = &format!("Tried to convert: '{value}'");
-        Ok(if &value[4..5] == "-" {
-            Self::from_ymd(
-                i32::from_str(&value[0..4]).expect(m),
-                i32::from_str(&value[5..7]).expect(m),
-                i32::from_str(&value[8..10]).expect(m),
+        let err = |e: ParseIntError| -> Result<i32, TimeWarpError> {
+            parse_error(format!("Error converting into number: '{value}'\n{e}",))
+        };
+        let y = i32::from_str(&value[0..4]).map_err(err)?;
+        let (m, d) = if value.len() == 10 && &value[4..5] == "-" && &value[7..8] == "-" {
+            (
+                i32::from_str(&value[5..7]).map_err(err)?,
+                i32::from_str(&value[8..10]).map_err(err)?,
+            )
+        } else if value.len() == 8 {
+            (
+                i32::from_str(&value[4..6]).map_err(err)?,
+                i32::from_str(&value[6..8]).map_err(err)?,
             )
         } else {
-            Self::from_ymd(
-                i32::from_str(&value[0..4]).expect(m),
-                i32::from_str(&value[4..6]).expect(m),
-                i32::from_str(&value[6..8]).expect(m),
-            )
-        })
+            return parse_error(format!("Wrong date-format: '{value}'"));
+        };
+        if m < 1 || m > 12 {
+            return parse_error(format!("Month out of range 0..12: '{m}'"));
+        }
+        let days_in_month = Self::day_per_month(y).as_slice()[(m - 1) as usize];
+        if d < 1 || d > days_in_month {
+            return parse_error(format!(
+                "Days exceeded in month {m} '{d}' ({days_in_month})"
+            ));
+        }
+        Ok(Self::from_ymd(y, m, d))
     }
 }
 
@@ -244,21 +275,18 @@ pub enum Tempus {
 }
 
 impl Tempus {
-    /// The start-date of this DaySpan (inclusive)
+    /// The start-date of this `DaySpan` (inclusive).
     pub fn start(&self) -> Doy {
-        use Tempus::*;
         match *self {
-            Moment(d) => d,
-            Interval(d, _) => d,
+            Tempus::Moment(d) | Tempus::Interval(d, _) => d,
         }
     }
 
-    /// The end-date of this DaySpan (exclusive)
+    /// The end-date of this `DaySpan` (exclusive).
     pub fn end(&self) -> Doy {
-        use Tempus::*;
         match *self {
-            Moment(d) => d + 1,
-            Interval(_, e) => e,
+            Tempus::Moment(d) => d + 1,
+            Tempus::Interval(_, e) => e,
         }
     }
 }
@@ -269,6 +297,18 @@ mod should {
     use crate::doy::Doy;
     use crate::month_of_year::Month;
     use std::convert::TryFrom;
+
+    #[test]
+    fn try_from() {
+        assert_eq!(
+            "2018-01-01",
+            Doy::try_from("2018-01-01").unwrap().as_iso_date()
+        );
+        assert!(Doy::try_from("2018-13-01").is_err());
+        assert!(Doy::try_from("2018-02-29").is_err());
+        assert!(Doy::try_from("20180431").is_err());
+        assert!(Doy::try_from("2018/04/15").is_err());
+    }
 
     #[test]
     fn from_week_of_year() {
