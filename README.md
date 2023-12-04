@@ -1,6 +1,12 @@
 # timewarp
+
+[![crates.io](https://img.shields.io/crates/v/timewarp.svg)](https://crates.io/crates/timewarp)
+[![crates.io](https://img.shields.io/crates/d/timewarp.svg)](https://crates.io/crates/timewarp)
+[![Documentation](https://docs.rs/tolerance/badge.svg)](https://docs.rs/timewarp)
+
 NLP library for parsing English and German natural language into dates and times. 
-Leverages [pest](https://pest.rs) for parsing human readable-dates and times.
+Leverages [pest](https://pest.rs) for parsing human readable-dates and times. 
+Tries to be as lenient as possible. 
 
 ## Examples:
 
@@ -16,5 +22,4 @@ intervall `2022-12-26 <= x < 2023-01-02`.
 ### Relative Dates
 
 `yesterday`, `tomorrow`, etc. are calculated based of a given base.
-`+4 weeks`, `-5 months` 
-
+`+4 weeks`, `-5 months`, `next friday`, `last thu` ... 
