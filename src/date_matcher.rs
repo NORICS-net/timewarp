@@ -18,23 +18,24 @@ pub enum Direction {
     From,
 }
 
-fn ok_doy(d: Doy) -> Result<Tempus, TimeWarpError> {
+#[allow(clippy::unnecessary_wraps)]
+#[inline]
+fn ok_moment(d: Doy) -> Result<Tempus, TimeWarpError> {
     Ok(Tempus::Moment(d))
 }
 
-fn correct_yyyy(str: &str, relative: i32) -> Result<i32, TimeWarpError> {
-    let yy = i32::from_str(str)?;
+fn correct_yyyy(yy: i32, relative: i32) -> i32 {
     if yy > 100 {
-        return Ok(yy);
+        return yy;
     }
     let offset = relative % 100;
     let base = relative - offset;
     if yy > offset + 50 {
-        Ok(base - 100 + yy)
+        base - 100 + yy
     } else if yy < offset - 50 {
-        Ok(base + 100 + yy)
+        base + 100 + yy
     } else {
-        Ok(base + yy)
+        base + yy
     }
 }
 
@@ -44,33 +45,33 @@ fn yy_mm_dd(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError>
     let mut dd = 0;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
+            Rule::yyyy => yy = correct_yyyy(i32::from_str(pair.as_str())?, today.year),
             Rule::mm => mm = i32::from_str(pair.as_str())?,
             Rule::dd => dd = i32::from_str(pair.as_str())?,
-            _ => println!("Found more than expected: {pair:?}"),
+            _ => return parse_error(format!("No date. Found more than expected: {pair:?}")),
         };
     }
-    ok_doy(Doy::from_ymd(yy, mm, dd))
+    ok_moment(Doy::from_ymd(yy, mm, dd))
 }
 
-fn date_lang(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
+fn date_long(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
     let mut yy = today.year;
     let mut mm = 0;
     let mut dd = 0;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
+            Rule::yyyy => yy = correct_yyyy(i32::from_str(pair.as_str())?, today.year),
             Rule::month => {
                 mm = Month::from_month(pair.into_inner().next().unwrap().as_rule()) as i32;
             }
             Rule::dd => dd = i32::from_str(pair.as_str())?,
-            _ => println!("Found more than expected: {pair:?}"),
+            _ => return parse_error(format!("No long-date. Found more than expected: {pair:?}")),
         };
     }
     if yy < 100 {
         yy += 2000;
     }
-    ok_doy(Doy::from_ymd(yy, mm, dd))
+    ok_moment(Doy::from_ymd(yy, mm, dd))
 }
 
 fn date_week(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError> {
@@ -78,9 +79,9 @@ fn date_week(pairs: Pairs<'_, Rule>, today: Doy) -> Result<Tempus, TimeWarpError
     let mut kw = 0;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::yyyy => yy = correct_yyyy(pair.as_str(), today.year)?,
+            Rule::yyyy => yy = correct_yyyy(i32::from_str(pair.as_str())?, today.year),
             Rule::kw => kw = i32::from_str(pair.as_str())?,
-            _ => println!("Found more than expected: {pair:?}"),
+            _ => return parse_error(format!("No week-date. Found more than expected: {pair:?}")),
         }
     }
     let start = Doy::from_week(yy, kw);
@@ -94,7 +95,7 @@ pub fn date_matcher(
 ) -> Result<Tempus, TimeWarpError> {
     let text = date.into();
     let mut amount = 0i32;
-    let mut future = direction == Direction::To;
+    let mut forwards = direction == Direction::To;
     for pair in DateMatcher::parse(Rule::date_matcher, &text)?
         .next()
         .unwrap()
@@ -104,45 +105,46 @@ pub fn date_matcher(
             Rule::date_iso | Rule::date_en | Rule::date_de => {
                 return yy_mm_dd(pair.into_inner(), today)
             }
-            Rule::date_lang => return date_lang(pair.into_inner(), today),
+            Rule::date_long => return date_long(pair.into_inner(), today),
             Rule::date_kw => return date_week(pair.into_inner(), today),
-            Rule::today => return ok_doy(today),
-            Rule::yesterday => return ok_doy(today - 1),
-            Rule::tomorrow => return ok_doy(today + 1),
-            Rule::last => future = false,
-            Rule::next => future = true,
+            Rule::today => return ok_moment(today),
+            Rule::yesterday => return ok_moment(today - 1),
+            Rule::tomorrow => return ok_moment(today + 1),
+            Rule::last => forwards = false,
+            Rule::next => forwards = true,
             Rule::amount => amount = i32::from_str(pair.as_str())?,
-            Rule::forelast => {
-                future = false;
+            Rule::fore_last => {
+                forwards = false;
                 amount = 1;
             }
-            Rule::afternext => {
+            Rule::after_next => {
+                forwards = true;
                 amount = 1;
             }
             Rule::day_of_week => {
                 let wd_today = today.day_of_week();
                 let target_wd =
                     DayOfWeek::from_day_of_week(pair.into_inner().next().unwrap().as_rule());
-                let date = if future {
+                let date = if forwards {
                     today + target_wd.days_before(wd_today) + amount * 7
                 } else {
                     today - wd_today.days_before(target_wd) - amount * 7
                 };
-                return ok_doy(date);
+                return ok_moment(date);
             }
             Rule::month => {
                 let month = Month::from_month(pair.into_inner().next().unwrap().as_rule());
-                let date = find_rel_month(today, direction, future, month);
-                return ok_doy(date);
+                let date = find_rel_month(today, direction, forwards, month);
+                return ok_moment(date);
             }
             Rule::timeunit => {
-                return ok_doy(find_timeunit(
+                return ok_moment(find_timeunit(
                     pair.into_inner().next().unwrap().as_rule(),
                     today,
                     amount,
                 ))
             }
-            _ => println!("date_matcher :: {pair:?}"),
+            _ => return parse_error(format!("date_matcher :: {pair:?}")),
         };
     }
     parse_error("Nothing found")
@@ -150,7 +152,7 @@ pub fn date_matcher(
 
 fn find_rel_month(today: Doy, direction: Direction, future: bool, target_month: Month) -> Doy {
     // if direction is EndTime add a Month
-    let target_month = target_month.inc(i32::from(direction == Direction::To));
+    let target_month = target_month + i32::from(direction == Direction::To);
     let today_m = today.month();
     let add = if target_month > today_m && !future {
         -1
@@ -177,10 +179,7 @@ fn find_timeunit(rule: Rule, today: Doy, amount: i32) -> Doy {
             Doy::from_ymd(y, m, today.day_of_month())
         }
         Rule::years => Doy::new(today.doy, today.year + amount),
-        _ => {
-            println!("find_timeunit :: {rule:?}");
-            today
-        }
+        _ => today,
     }
 }
 
@@ -194,11 +193,11 @@ mod should {
 
     #[test]
     fn adjust_yyyy() {
-        assert_eq!(2023, correct_yyyy("2023", 2023).unwrap());
-        assert_eq!(2023, correct_yyyy("23", 2023).unwrap());
-        assert_eq!(2023, correct_yyyy("23", 1995).unwrap());
-        assert_eq!(1989, correct_yyyy("89", 2023).unwrap());
-        assert_eq!(2089, correct_yyyy("89", 2043).unwrap());
+        assert_eq!(2023, correct_yyyy(2023, 2023));
+        assert_eq!(2023, correct_yyyy(23, 2023));
+        assert_eq!(2023, correct_yyyy(23, 1995));
+        assert_eq!(1989, correct_yyyy(89, 2023));
+        assert_eq!(2089, correct_yyyy(89, 2043));
     }
 
     #[test]

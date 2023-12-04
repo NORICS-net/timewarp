@@ -1,7 +1,7 @@
 use crate::day_of_week::DayOfWeek;
 use crate::error::parse_error;
 use crate::month_of_year::Month;
-use crate::DayOfWeek::{Sun, Thu};
+use crate::DayOfWeek::{Fri, Sun, Thu};
 use crate::TimeWarpError;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -46,10 +46,11 @@ impl Doy {
     /// Creates a new Doy, by the give `dayOfYear` and the `year`.
     /// 1 = 1. Jan, 32 = 1. Feb, 0 = 31. Dec (year - 1)  
     pub fn new(doy: i32, year: i32) -> Self {
-        let max_doy = 365 + i32::from(Self::is_leapyear(year));
         if doy < 1 {
-            Self::new(365 + i32::from(Self::is_leapyear(year - 1)) + doy, year - 1)
-        } else if doy > max_doy {
+            return Self::new(365 + i32::from(Self::is_leapyear(year - 1)) + doy, year - 1);
+        }
+        let max_doy = 365 + i32::from(Self::is_leapyear(year));
+        if doy > max_doy {
             Self::new(doy - max_doy, year + 1)
         } else {
             Self { year, doy }
@@ -84,10 +85,11 @@ impl Doy {
         assert!(week > 0 && week < 54, "Week has to be in 1..53");
         // weekday of 4th, Jan.
         let weekday = Self::new(4, year).day_of_week();
-        let day_of_year = match weekday {
-            Sun => Thu as i32 - 6,
-            _ => Thu as i32 + 1 - (weekday as i32),
-        } + (week - 1) * 7;
+        let day_of_year = (week - 1) * 7
+            + match weekday {
+                Sun => -2,
+                _ => Fri as i32 - weekday as i32,
+            };
         Self::new(day_of_year, year)
     }
 
@@ -98,12 +100,12 @@ impl Doy {
     }
 
     /// Is this year a leap-year?
-    pub fn leapyear(&self) -> bool {
+    pub fn leapyear(self) -> bool {
         Self::is_leapyear(self.year)
     }
 
     /// converts a *day of year* to `mmdd`.
-    fn as_date(&self) -> (i32, i32) {
+    fn as_date(self) -> (i32, i32) {
         let mut doy = self.doy;
         let mut m = 1;
         for ds in Self::day_per_month(self.year) {
@@ -117,13 +119,13 @@ impl Doy {
     }
 
     /// returns this doy in iso-format `yyyy-mm-dd`.
-    pub fn as_iso_date(&self) -> String {
+    pub fn as_iso_date(self) -> String {
         format!("{self:#}")
     }
 
     /// Day of Week
     #[inline]
-    pub fn day_of_week(&self) -> DayOfWeek {
+    pub fn day_of_week(self) -> DayOfWeek {
         let y = self.year % 100;
         let y_off = y + (y / 4) + 6 - self.leapyear() as i32;
         DayOfWeek::from(y_off + self.doy)
@@ -133,23 +135,23 @@ impl Doy {
     /// contains January 4th. And the first Thursday is always in the first week of the year.
     ///
     /// returns the week in iso-8601-format: `yyyy`-W`ww`
-    pub fn iso8601week(&self) -> String {
-        let dof = self.day_of_week();
-        let thu = match dof {
-            Sun => *self + Thu as i32 - 7,
-            _ => *self + Thu as i32 - (dof as i32),
+    pub fn iso8601week(self) -> String {
+        let dow = self.day_of_week();
+        let thursday = match dow {
+            Sun => self + Thu - 7, // Sunday => last day of ISO-week.
+            _ => self + Thu - dow,
         };
-        let kw = (thu.doy + 6) / 7;
-        format!("{}-W{kw:02}", thu.year)
+        let kw = (thursday.doy + 6) / 7;
+        format!("{}-W{kw:02}", thursday.year)
     }
 
     /// Returns the day of month.
-    pub fn day_of_month(&self) -> i32 {
+    pub fn day_of_month(self) -> i32 {
         self.as_date().1
     }
 
     /// Returns just the `Month`.
-    pub fn month(&self) -> Month {
+    pub fn month(self) -> Month {
         Month::from(self.as_date().0)
     }
 }
@@ -200,7 +202,7 @@ macro_rules! gen_calcs {
     }
 }
 
-gen_calcs!(i8, i16, i32, i64, u8, u16, u32, u64);
+gen_calcs!(i8, i16, i32, i64, u8, u16, u32, u64, DayOfWeek);
 
 impl PartialOrd for Doy {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

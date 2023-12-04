@@ -47,7 +47,7 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
     date_en = ${  mm ~ "/" ~ dd ~ "/" ~ yyyy }
     date_de = ${  dd ~ "." ~ mm ~ "." ~ yyyy? }
     date_kw = { ( (^"kw" | ^"cw" | ^"week" | ^"woche" ) ~ yyyy ~ ("-" | "/") ~ kw | yyyy ~ "-"? ~ ^"W" ~ kw) }
-    date_lang = { ( month ~ dd ~ ORD? ~ yyyy | dd ~ ORD? ~ month ~ yyyy )  }
+    date_long = { ( month ~ dd ~ ORD? ~ yyyy | dd ~ ORD? ~ month ~ yyyy )  }
 
 /// purple
 timeunit = ${ days | weeks | months | years }
@@ -56,17 +56,17 @@ amount = ${ ( "+" | "-" ) ~ ASCII_DIGIT+ }
     yesterday = ${ ^"gestern" | ^"yesterday" }
     today = ${ ^"today" | ^"heute" }
     last = ${ ^"last" | ^"previous" | ^"prev" | ^"letzte" ~ BEUG? | ^"vorige" ~ BEUG? | ^"vorherige" ~ BEUG? }
-    forelast = ${ ^"forelast" | ^"vorletzte" ~ BEUG }
+    fore_last = ${ ^"forelast" | ^"vorletzte" ~ BEUG }
 /// blue
-past = _{ yesterday | today | (forelast | last? ) ~ ( day_of_week | month ) }
+past = _{ yesterday | today | (fore_last | last? ) ~ ( day_of_week | month ) }
     tomorrow = ${ ^"tomorrow" | ^"morgen" }
     next = ${ ^"next" | ^"coming" | ^"nächste" ~ BEUG | ^"kommende" ~ BEUG }
-    afternext = ${ "übernächste" ~ BEUG }
+    after_next = ${ "übernächste" ~ BEUG }
 /// green
-future = _{ tomorrow | (afternext | next) ~ ( day_of_week | month ) }
+future = _{ tomorrow | (after_next | next) ~ ( day_of_week | month ) }
 
 offset = _{ amount ~ timeunit | future | past }
 
 
-date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | date_lang | date_kw | offset ) ~ WHITESPACE* }
+date_matcher = { WHITESPACE* ~ ( date_iso | date_de | date_en | date_long | date_kw | offset ) ~ WHITESPACE* }
 

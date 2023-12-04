@@ -20,6 +20,8 @@ impl From<ParseIntError> for TimeWarpError {
     }
 }
 
+impl std::error::Error for TimeWarpError {}
+
 impl<T> From<Result<T, TimeWarpError>> for TimeWarpError
 where
     T: Debug,
