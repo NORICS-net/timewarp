@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 221 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Adjusting changelogs prior to release of timewarp v0.3.2 ([`5a7cf74`](https://github.com/NORICS-net/timewarp/commit/5a7cf74e3011daf4ee969801a1385c62357c8f3a))
     - CHANGELOG added. ([`cb40a34`](https://github.com/NORICS-net/timewarp/commit/cb40a342c157508712b93bb5e8920aa3e3960fbb))
     - Update README.md ([`a5e5f04`](https://github.com/NORICS-net/timewarp/commit/a5e5f046f3cb8f5fdc682c5f034adca319d64b5a))
     - Updated dependencies, better docu. ([`cfc7cf1`](https://github.com/NORICS-net/timewarp/commit/cfc7cf1976a643a75f9191d6038d2d8bca808daa))
