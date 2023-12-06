@@ -5,13 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.0 (2023-12-06)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Api streamlined. ([`8fe5460`](https://github.com/NORICS-net/timewarp/commit/8fe546054e072ea31c439285f582427bedd73e32))
+</details>
+
 ## v0.3.2 (2023-12-04)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 7 commits contributed to the release.
  - 221 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release timewarp v0.3.2 ([`3e5cd94`](https://github.com/NORICS-net/timewarp/commit/3e5cd94f29e307f2c44a872f6c0ab2068b2b6308))
+    - Adjusting changelogs prior to release of timewarp v0.3.2 ([`1e5b99f`](https://github.com/NORICS-net/timewarp/commit/1e5b99fee40a5b5b24ceddc0977109a6a738aee4))
     - Adjusting changelogs prior to release of timewarp v0.3.2 ([`b8b431e`](https://github.com/NORICS-net/timewarp/commit/b8b431e8cfa051f33df7795e87f439ed1e66ad36))
     - Adjusting changelogs prior to release of timewarp v0.3.2 ([`5a7cf74`](https://github.com/NORICS-net/timewarp/commit/5a7cf74e3011daf4ee969801a1385c62357c8f3a))
     - CHANGELOG added. ([`cb40a34`](https://github.com/NORICS-net/timewarp/commit/cb40a342c157508712b93bb5e8920aa3e3960fbb))
